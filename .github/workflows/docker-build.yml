@@ -65,15 +65,25 @@ jobs:
       if: github.event_name != 'pull_request'
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
         format: 'sarif'
         output: 'trivy-results.sarif'
         exit-code: '0'
+      continue-on-error: true
+
+    - name: Check Trivy results file
+      if: github.event_name != 'pull_request'
+      run: |
+        if [ -f "trivy-results.sarif" ]; then
+          echo "Trivy SARIF file created successfully"
+          ls -la trivy-results.sarif
+        else
+          echo "Trivy SARIF file not found"
+        fi
 
     - name: Upload Trivy scan results to GitHub Security tab
-      if: always() && github.event_name != 'pull_request'
+      if: always() && github.event_name != 'pull_request' && hashFiles('trivy-results.sarif') != ''
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
-      continue-on-error: true
 
